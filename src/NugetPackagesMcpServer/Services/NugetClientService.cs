@@ -1,9 +1,13 @@
-using NugetPackagesMcpServer.Models;
-using NugetPackagesMcpServer.Configuration;
 using Microsoft.Extensions.Options;
-using NuGet.Protocol.Core.Types;
-using NuGet.Protocol;
 using NuGet.Configuration;
+using NuGet.Packaging;
+using NuGet.Protocol;
+using NuGet.Protocol.Core.Types;
+using NuGet.Versioning;
+using NugetPackagesMcpServer.Configuration;
+using NugetPackagesMcpServer.Models;
+using PublicApiGenerator;
+using System.Reflection;
 
 namespace NugetPackagesMcpServer.Services
 {
@@ -85,22 +89,50 @@ namespace NugetPackagesMcpServer.Services
             var logger = NuGet.Common.NullLogger.Instance;
             var identity = new NuGet.Packaging.Core.PackageIdentity(packageName, new NuGet.Versioning.NuGetVersion(version));
 
-            var metadata = await metadataResource.GetMetadataAsync(
-                identity,
+            using MemoryStream packageStream = new MemoryStream();
+
+            var resource = await _repository.GetResourceAsync<FindPackageByIdResource>();
+            await resource.CopyNupkgToStreamAsync(
+                packageName,
+                new NuGetVersion(version),
+                packageStream,
                 _cacheContext,
                 logger,
                 CancellationToken.None);
+
+            using PackageArchiveReader packageReader = new PackageArchiveReader(packageStream);
+            NuspecReader nuspecReader = await packageReader.GetNuspecReaderAsync(CancellationToken.None);
+
+            // get all DLLs in the package search .netX or standard
+            var dllFile = packageReader.GetFiles().Where(f => f.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)).First();
+
+            var outputDir = Path.Combine(Path.GetTempPath(), "extracted_dlls");
+            var outputPath = Path.Combine(outputDir, Path.GetFileName(dllFile));
+            Directory.CreateDirectory(outputDir);
+
+            // Extract DLL to a stream or file
+            using (var dllStream = packageReader.GetStream(dllFile))
+            {
+                using (var fileStream = File.Create(outputPath))
+                {
+                    dllStream.CopyTo(fileStream);
+                }
+
+            }
+            var asm = Assembly.LoadFrom(outputPath);
+
+            var contractsMarkdown = asm.GeneratePublicApi();
+
 
             var result = new PackageContractsResult
             {
                 PackageName = packageName,
                 Version = version,
-                Description = metadata?.Description ?? string.Empty,
-                Authors = metadata?.Authors ?? string.Empty,
-                Tags = metadata?.Tags ?? string.Empty,
-                License = metadata?.LicenseMetadata?.License ?? metadata?.LicenseUrl?.ToString() ?? string.Empty,
-                ProjectUrl = metadata?.ProjectUrl?.ToString() ?? string.Empty,
-                ContractsMarkdown = string.Empty // To be populated separately
+                Description = nuspecReader.GetDescription() ?? string.Empty,
+                Authors = nuspecReader.GetAuthors() ?? string.Empty,
+                Tags = nuspecReader.GetTags() ?? string.Empty,
+                ProjectUrl = nuspecReader.GetProjectUrl() ?? string.Empty,
+                ContractsMarkdown = contractsMarkdown
             };
             return result;
         }
