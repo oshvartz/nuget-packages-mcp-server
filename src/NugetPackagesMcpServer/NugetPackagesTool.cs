@@ -33,28 +33,26 @@ namespace NugetPackagesMcpServer
             return await _nugetClientService.GetPackageDependenciesAsync(packageName, version);
         }
 
-        [McpServerTool, Description("Get public interfaces and classes contracts from a NuGet package as markdown")]
+[McpServerTool, Description("Get public interfaces and classes contracts from a NuGet package as markdown")]
         public async Task<string> GetPackageContracts(string packageName, string version)
         {
-            var contracts = await _nugetClientService.GetPackageContractsAsync(packageName, version);
-            // Convert contracts to markdown
-            var md = new System.Text.StringBuilder();
-            foreach (var contract in contracts)
-            {
-                md.AppendLine($"### {contract.Type} {contract.Name}");
-                md.AppendLine($"Namespace: `{contract.Namespace}`");
-                md.AppendLine();
-                if (contract.Members.Any())
-                {
-                    md.AppendLine("Members:");
-                    foreach (var member in contract.Members)
-                    {
-                        md.AppendLine($"- `{member}`");
-                    }
-                    md.AppendLine();
-                }
-            }
-            return md.ToString();
+            var result = await _nugetClientService.GetPackageContractsAsync(packageName, version);
+
+            var md = $"# Package: {result.PackageName} v{result.Version}\n\n";
+            if (!string.IsNullOrWhiteSpace(result.Description))
+                md += $"## Description\n{result.Description}\n\n";
+            if (!string.IsNullOrWhiteSpace(result.Authors))
+                md += $"**Authors:** {result.Authors}\n\n";
+            if (!string.IsNullOrWhiteSpace(result.Tags))
+                md += $"**Tags:** {result.Tags}\n\n";
+            if (!string.IsNullOrWhiteSpace(result.License))
+                md += $"**License:** {result.License}\n\n";
+            if (!string.IsNullOrWhiteSpace(result.ProjectUrl))
+                md += $"**Project URL:** {result.ProjectUrl}\n\n";
+            if (!string.IsNullOrWhiteSpace(result.ContractsMarkdown))
+                md += $"---\n\n{result.ContractsMarkdown}\n";
+
+            return md.Trim();
         }
     }
 }

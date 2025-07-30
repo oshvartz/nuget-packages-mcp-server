@@ -79,27 +79,30 @@ namespace NugetPackagesMcpServer.Services
             return dependencies;
         }
 
-        public Task<IEnumerable<NugetContract>> GetPackageContractsAsync(string packageName, string version)
+        public async Task<PackageContractsResult> GetPackageContractsAsync(string packageName, string version)
         {
-            // Stub: return mock data
-            var contracts = new List<NugetContract>
+            var metadataResource = await _repository.GetResourceAsync<PackageMetadataResource>();
+            var logger = NuGet.Common.NullLogger.Instance;
+            var identity = new NuGet.Packaging.Core.PackageIdentity(packageName, new NuGet.Versioning.NuGetVersion(version));
+
+            var metadata = await metadataResource.GetMetadataAsync(
+                identity,
+                _cacheContext,
+                logger,
+                CancellationToken.None);
+
+            var result = new PackageContractsResult
             {
-                new NugetContract
-                {
-                    Namespace = "Sample.Namespace",
-                    Name = "IMyService",
-                    Type = "interface",
-                    Members = new List<string> { "void DoWork();", "int GetValue();" }
-                },
-                new NugetContract
-                {
-                    Namespace = "Sample.Namespace",
-                    Name = "MyService",
-                    Type = "class",
-                    Members = new List<string> { "public void DoWork()", "public int GetValue()" }
-                }
+                PackageName = packageName,
+                Version = version,
+                Description = metadata?.Description ?? string.Empty,
+                Authors = metadata?.Authors ?? string.Empty,
+                Tags = metadata?.Tags ?? string.Empty,
+                License = metadata?.LicenseMetadata?.License ?? metadata?.LicenseUrl?.ToString() ?? string.Empty,
+                ProjectUrl = metadata?.ProjectUrl?.ToString() ?? string.Empty,
+                ContractsMarkdown = string.Empty // To be populated separately
             };
-            return Task.FromResult<IEnumerable<NugetContract>>(contracts);
+            return result;
         }
     }
 }
