@@ -4,6 +4,5 @@ namespace NugetPackagesMcpServer.Models
     {
         public string Version { get; set; } = string.Empty;
         public bool IsPrerelease { get; set; }
-        public DateTime Published { get; set; }
     }
 }

@@ -21,7 +21,7 @@ namespace NugetPackagesMcpServer
         }
 
         [McpServerTool, Description("Get all available versions of a NuGet package from the configured feed")]
-        public async Task<IEnumerable<NugetPackageVersion>> GetPackageVersions(string packageName, bool? includePrerelease = null)
+        public async Task<IEnumerable<NugetPackageVersion>> GetPackageVersions(string packageName,int top = 10, bool? includePrerelease = null)
         {
             var usePrerelease = includePrerelease ?? _options.AllowPrerelease;
             return await _nugetClientService.GetPackageVersionsAsync(packageName, usePrerelease);
