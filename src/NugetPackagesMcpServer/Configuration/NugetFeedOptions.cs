@@ -10,5 +10,6 @@ namespace NugetPackagesMcpServer.Configuration
         public string? FeedUrl { get; set; } = string.Empty;
         public int TimeoutSeconds { get; set; } = 30;
         public bool AllowPrerelease { get; set; } = false;
+        public bool UseDefaultAzureCredential { get; set; } = false;
     }
 }

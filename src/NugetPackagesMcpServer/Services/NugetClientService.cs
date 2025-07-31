@@ -1,3 +1,5 @@
+using Azure.Core;
+using Azure.Identity;
 using Microsoft.Extensions.Options;
 using NuGet.Configuration;
 using NuGet.Packaging;
@@ -21,9 +23,33 @@ namespace NugetPackagesMcpServer.Services
 
         public NugetClientService(IOptions<NugetFeedOptions> options)
         {
-            // var source = new PackageSource(options.Value.FeedUrl);
-            _repository = Repository.Factory.GetCoreV3(options.Value.FeedUrl);
+            _repository = CreateSourceRepository(options.Value);
             _cacheContext = new SourceCacheContext();
+        }
+
+        private SourceRepository CreateSourceRepository(NugetFeedOptions options)
+        {
+            if (options.UseDefaultAzureCredential &&
+                (options.FeedUrl?.Contains("pkgs.dev.azure.com", StringComparison.OrdinalIgnoreCase) == true ||
+                 options.FeedUrl?.Contains("visualstudio.com", StringComparison.OrdinalIgnoreCase) == true))
+            {
+                var credential = new DefaultAzureCredential();
+                var tokenRequestContext = new TokenRequestContext(new[] { "499b84ac-1321-427f-aa17-267ca6975798/.default" });
+                var token = credential.GetToken(tokenRequestContext, CancellationToken.None);
+
+                var source = new PackageSource(options.FeedUrl)
+                {
+                    Credentials = new PackageSourceCredential(
+                        options.FeedUrl,
+                        "AzureDevOps",
+                        token.Token,
+                        isPasswordClearText: true,
+                        "basic")
+                };
+                return Repository.Factory.GetCoreV3(source);
+            }
+
+            return Repository.Factory.GetCoreV3(options.FeedUrl);
         }
 
         public async Task<IEnumerable<NugetPackageVersion>> GetPackageVersionsAsync(string packageName, bool includePrerelease = false, int top = 10)
