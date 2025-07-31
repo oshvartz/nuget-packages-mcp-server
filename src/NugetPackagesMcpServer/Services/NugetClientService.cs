@@ -7,7 +7,10 @@ using NuGet.Versioning;
 using NugetPackagesMcpServer.Configuration;
 using NugetPackagesMcpServer.Models;
 using PublicApiGenerator;
+using System.IO;
 using System.Reflection;
+using System.Runtime.Loader;
+using System.Text.RegularExpressions;
 
 namespace NugetPackagesMcpServer.Services
 {
@@ -113,8 +116,11 @@ namespace NugetPackagesMcpServer.Services
             using PackageArchiveReader packageReader = new PackageArchiveReader(packageStream);
             NuspecReader nuspecReader = await packageReader.GetNuspecReaderAsync(CancellationToken.None);
 
+            Regex regex = new Regex("net\\d.0|netstandard");
+
             // get all DLLs in the package search .netX or standard
-            var dllFile = packageReader.GetFiles().Where(f => f.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)).First();
+            var dllFile = packageReader.GetFiles().Where(f => f.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+                .First(f => regex.IsMatch(f));
 
             var outputDir = Path.Combine(Path.GetTempPath(), "extracted_dlls");
             var outputPath = Path.Combine(outputDir, Path.GetFileName(dllFile));
@@ -129,7 +135,8 @@ namespace NugetPackagesMcpServer.Services
                 }
 
             }
-            var asm = Assembly.LoadFrom(outputPath);
+
+            var asm = Assembly.LoadFile(outputPath);
 
             var contractsMarkdown = asm.GeneratePublicApi();
 
