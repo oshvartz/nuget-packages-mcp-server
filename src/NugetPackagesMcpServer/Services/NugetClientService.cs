@@ -133,9 +133,17 @@ namespace NugetPackagesMcpServer.Services
             var deps = await GetPackageDependenciesAsync(packageName, version);
             foreach (var dep in deps)
             {
-                // Load each dependency assembly
+                // Load each dependency assembly - only first level dependencies are loaded
                 var depPath = await DownloadAndCopyNuget(dep.PackageName, dep.VersionRange);
-                AssemblyLoadContext.Default.LoadFromAssemblyPath(depPath);
+                try
+                {
+                    AssemblyLoadContext.Default.LoadFromAssemblyPath(depPath);
+                }
+                catch (Exception ex)
+                {
+                    // Log or handle the exception if needed
+                    Console.WriteLine($"Failed to load assembly {dep.PackageName}: {ex.Message}");
+                }
             }
 
             var asm = Assembly.LoadFrom(outputPath);

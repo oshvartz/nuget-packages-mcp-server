@@ -44,53 +44,53 @@ namespace NugetPackagesMcpServer.Services
                 }
             }
 
-            var interfaces = publicTypes.Where(t => t.IsInterface).OrderBy(t => t!.Name);
+            var interfaces = publicTypes.Where(t => t!.IsInterface).OrderBy(t => t!.Name);
             if (interfaces.Any())
             {
                 markdownBuilder.AppendLine("## Interfaces");
                 foreach (var i in interfaces)
                 {
-                    AppendTypeInfo(markdownBuilder, i);
+                    AppendTypeInfo(markdownBuilder, i!);
                 }
             }
 
-            var classes = publicTypes.Where(t => t.IsClass && !t.IsInterface && !IsStatic(t)).OrderBy(t => t.Name);
+            var classes = publicTypes.Where(t => t!.IsClass && !t.IsInterface && !IsStatic(t)).OrderBy(t => t!.Name);
             if (classes.Any())
             {
                 markdownBuilder.AppendLine("## Classes");
                 foreach (var c in classes)
                 {
-                    AppendTypeInfo(markdownBuilder, c);
+                    AppendTypeInfo(markdownBuilder, c!);
                 }
             }
 
-            var structs = publicTypes.Where(t => t.IsValueType && !t.IsEnum).OrderBy(t => t.Name);
+            var structs = publicTypes.Where(t => t!.IsValueType && !t.IsEnum).OrderBy(t => t!.Name);
             if (structs.Any())
             {
                 markdownBuilder.AppendLine("## Structs");
                 foreach (var s in structs)
                 {
-                    AppendTypeInfo(markdownBuilder, s);
+                    AppendTypeInfo(markdownBuilder, s!);
                 }
             }
 
-            var enums = publicTypes.Where(t => t.IsEnum).OrderBy(t => t.Name);
+            var enums = publicTypes.Where(t => t!.IsEnum).OrderBy(t => t!.Name);
             if (enums.Any())
             {
                 markdownBuilder.AppendLine("## Enums");
                 foreach (var e in enums)
                 {
-                    AppendEnumInfo(markdownBuilder, e);
+                    AppendEnumInfo(markdownBuilder, e!);
                 }
             }
 
-            var extensionMethodClasses = publicTypes.Where(t => IsStatic(t) && t.GetMethods(BindingFlags.Static | BindingFlags.Public).Any(m => m.IsDefined(typeof(ExtensionAttribute), false)));
+            var extensionMethodClasses = publicTypes.Where(t => IsStatic(t!) && t!.GetMethods(BindingFlags.Static | BindingFlags.Public).Any(m => m.IsDefined(typeof(ExtensionAttribute), false)));
             if (extensionMethodClasses.Any())
             {
                 markdownBuilder.AppendLine("## Extension Methods");
                 foreach (var type in extensionMethodClasses)
                 {
-                    var extensionMethods = type.GetMethods(BindingFlags.Static | BindingFlags.Public)
+                    var extensionMethods = type!.GetMethods(BindingFlags.Static | BindingFlags.Public)
                                                .Where(m => m.IsDefined(typeof(ExtensionAttribute), false));
 
                     foreach (var method in extensionMethods)
@@ -127,8 +127,8 @@ namespace NugetPackagesMcpServer.Services
                         try
                         {
                             markdownBuilder.Append($"public {FormatTypeName(prop.PropertyType)} {prop.Name} {{ ");
-                            if (prop.CanRead && getter.IsPublic) markdownBuilder.Append("get; ");
-                            if (prop.CanWrite && setter.IsPublic) markdownBuilder.Append("set; ");
+                            if (prop.CanRead && getter!.IsPublic) markdownBuilder.Append("get; ");
+                            if (prop.CanWrite && setter!.IsPublic) markdownBuilder.Append("set; ");
                             markdownBuilder.AppendLine("}");
                         }
                         catch (FileNotFoundException)
