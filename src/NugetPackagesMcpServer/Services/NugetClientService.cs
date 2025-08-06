@@ -8,7 +8,6 @@ using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
 using NugetPackagesMcpServer.Configuration;
 using NugetPackagesMcpServer.Models;
-using PublicApiGenerator;
 using System.IO;
 using System.Reflection;
 using System.Runtime.Loader;
@@ -20,11 +19,13 @@ namespace NugetPackagesMcpServer.Services
     {
         private readonly SourceRepository _repository;
         private readonly SourceCacheContext _cacheContext;
+        private readonly IAssemblyContractResolver _assemblyContractResolver;
 
-        public NugetClientService(IOptions<NugetFeedOptions> options)
+        public NugetClientService(IOptions<NugetFeedOptions> options, IAssemblyContractResolver assemblyContractResolver)
         {
             _repository = CreateSourceRepository(options.Value);
             _cacheContext = new SourceCacheContext();
+            _assemblyContractResolver = assemblyContractResolver;
         }
 
         private SourceRepository CreateSourceRepository(NugetFeedOptions options)
@@ -61,7 +62,7 @@ namespace NugetPackagesMcpServer.Services
                 _cacheContext,
                 NuGet.Common.NullLogger.Instance,
                 CancellationToken.None);
-        
+
 
             var metadataResource = await _repository.GetResourceAsync<PackageMetadataResource>();
             var logger = NuGet.Common.NullLogger.Instance;
@@ -112,7 +113,7 @@ namespace NugetPackagesMcpServer.Services
                         dependencies.Add(new NugetDependency
                         {
                             PackageName = dep.Id,
-                            VersionRange = dep.VersionRange?.ToString() ?? "",
+                            VersionRange = dep.VersionRange.MinVersion?.ToString() ?? "",
                             TargetFramework = targetFramework
                         });
                     }
@@ -125,9 +126,48 @@ namespace NugetPackagesMcpServer.Services
         public async Task<PackageContractsResult> GetPackageContractsAsync(string packageName, string version)
         {
             var metadataResource = await _repository.GetResourceAsync<PackageMetadataResource>();
-            var logger = NuGet.Common.NullLogger.Instance;
-            var identity = new NuGet.Packaging.Core.PackageIdentity(packageName, new NuGet.Versioning.NuGetVersion(version));
 
+            var identity = new NuGet.Packaging.Core.PackageIdentity(packageName, new NuGet.Versioning.NuGetVersion(version));
+            var outputPath = await DownloadAndCopyNuget(packageName, version);
+
+            var deps = await GetPackageDependenciesAsync(packageName, version);
+            foreach (var dep in deps)
+            {
+                // Load each dependency assembly
+                var depPath = await DownloadAndCopyNuget(dep.PackageName, dep.VersionRange);
+                AssemblyLoadContext.Default.LoadFromAssemblyPath(depPath);
+            }
+
+            var asm = Assembly.LoadFrom(outputPath);
+
+            var contractsMarkdown = _assemblyContractResolver.ResolveAssemblyContractToMarkdown(asm);
+
+
+            var logger = NuGet.Common.NullLogger.Instance;
+
+            var metadata = await metadataResource.GetMetadataAsync(
+                identity,
+                _cacheContext,
+                logger,
+                CancellationToken.None);
+
+
+            var result = new PackageContractsResult
+            {
+                PackageName = packageName,
+                Version = version,
+                Description = metadata.Description,
+                Authors = metadata.Authors ?? string.Empty,
+                Tags = metadata.Tags ?? string.Empty,
+                ProjectUrl = metadata.ProjectUrl.ToString(),
+                ContractsMarkdown = contractsMarkdown
+            };
+            return result;
+        }
+
+        private async Task<string> DownloadAndCopyNuget(string packageName, string version)
+        {
+            var logger = NuGet.Common.NullLogger.Instance;
             using MemoryStream packageStream = new MemoryStream();
 
             var resource = await _repository.GetResourceAsync<FindPackageByIdResource>();
@@ -140,8 +180,7 @@ namespace NugetPackagesMcpServer.Services
                 CancellationToken.None);
 
             using PackageArchiveReader packageReader = new PackageArchiveReader(packageStream);
-            NuspecReader nuspecReader = await packageReader.GetNuspecReaderAsync(CancellationToken.None);
-
+            
             Regex regex = new Regex("net\\d.0|netstandard");
 
             // get all DLLs in the package search .netX or standard
@@ -162,22 +201,7 @@ namespace NugetPackagesMcpServer.Services
 
             }
 
-            var asm = Assembly.LoadFile(outputPath);
-
-            var contractsMarkdown = asm.GeneratePublicApi();
-
-
-            var result = new PackageContractsResult
-            {
-                PackageName = packageName,
-                Version = version,
-                Description = nuspecReader.GetDescription() ?? string.Empty,
-                Authors = nuspecReader.GetAuthors() ?? string.Empty,
-                Tags = nuspecReader.GetTags() ?? string.Empty,
-                ProjectUrl = nuspecReader.GetProjectUrl() ?? string.Empty,
-                ContractsMarkdown = contractsMarkdown
-            };
-            return result;
+            return outputPath;
         }
     }
 }

@@ -28,7 +28,7 @@
 		<PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
 		<PackageReference Include="NuGet.Protocol" Version="6.14.0" />
 		<PackageReference Include="CommandLineParser" Version="2.9.1" />
-		<PackageReference Include="PublicApiGenerator" Version="11.4.6" />
+		<PackageReference Include="System.Reflection.MetadataLoadContext" Version="9.0.7" />
 	</ItemGroup>
 
 	<ItemGroup>

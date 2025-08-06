@@ -64,6 +64,7 @@ public class Program
             logger.Debug("Registering services...");
             // Register NugetClientService as singleton
             builder.Services.AddSingleton<INugetClientService, NugetClientService>();
+            builder.Services.AddSingleton<IAssemblyContractResolver, AssemblyContractResolver>();
 
             logger.Debug("Configuring MCP server...");
             builder.Services
@@ -103,6 +104,7 @@ public class Program
         builder.Services.Configure<NugetPackagesMcpServer.Configuration.NugetFeedOptions>(
             builder.Configuration.GetSection(NugetPackagesMcpServer.Configuration.NugetFeedOptions.SectionName));
         builder.Services.AddSingleton<NugetPackagesMcpServer.Services.INugetClientService, NugetPackagesMcpServer.Services.NugetClientService>();
+        builder.Services.AddSingleton<IAssemblyContractResolver, AssemblyContractResolver>();
 
         using var host = builder.Build();
         var serviceProvider = host.Services;
