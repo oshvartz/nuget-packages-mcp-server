@@ -142,7 +142,6 @@ namespace NugetPackagesMcpServer.Services
 
             var contractsMarkdown = _assemblyContractResolver.ResolveAssemblyContractToMarkdown(asm);
 
-
             var logger = NuGet.Common.NullLogger.Instance;
 
             var metadata = await metadataResource.GetMetadataAsync(
@@ -188,8 +187,12 @@ namespace NugetPackagesMcpServer.Services
                 .First(f => regex.IsMatch(f));
 
             var outputDir = Path.Combine(Path.GetTempPath(), "extracted_dlls");
-            var outputPath = Path.Combine(outputDir, Path.GetFileName(dllFile));
+            var outputPath = Path.Combine(outputDir, $"{Path.GetFileNameWithoutExtension(dllFile)}:{version}.dll");
             Directory.CreateDirectory(outputDir);
+            if(File.Exists(outputPath))
+            {
+                return outputPath; // If the file already exists, return the existing path
+            }
 
             // Extract DLL to a stream or file
             using (var dllStream = packageReader.GetStream(dllFile))
