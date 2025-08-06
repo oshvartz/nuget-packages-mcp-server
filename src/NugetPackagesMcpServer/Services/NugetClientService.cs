@@ -159,7 +159,7 @@ namespace NugetPackagesMcpServer.Services
                 Description = metadata.Description,
                 Authors = metadata.Authors ?? string.Empty,
                 Tags = metadata.Tags ?? string.Empty,
-                ProjectUrl = metadata.ProjectUrl.ToString(),
+                ProjectUrl = $"{metadata.ProjectUrl}",
                 ContractsMarkdown = contractsMarkdown
             };
             return result;

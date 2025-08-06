@@ -1,8 +1,8 @@
 namespace NugetPackagesMcpServer.Models
 {
-    public class NugetPackageVersion
+    public record NugetPackageVersion
     {
-        public string Version { get; set; } = string.Empty;
-        public bool IsPrerelease { get; set; }
+        public string Version { get; init; } = string.Empty;
+        public bool IsPrerelease { get; init; }
     }
 }
